@@ -1,8 +1,27 @@
-# datastar-templ
+<h1 align="center">datastar-templ</h1>
 
-Type-safe [Datastar](https://data-star.dev) attribute helpers for [templ](https://github.com/a-h/templ) templates.
+<p align="center">
+  <strong>Type-safe Datastar attribute helpers for templ templates.</strong>
+  <br>
+  <a href="https://pkg.go.dev/github.com/yacobolo/datastar-templ">
+    <img src="https://img.shields.io/badge/go-reference-007d9c?logo=go&logoColor=white&style=flat-square" alt="Go Reference">
+  </a>
+  <a href="https://goreportcard.com/report/github.com/yacobolo/datastar-templ">
+    <img src="https://goreportcard.com/badge/github.com/yacobolo/datastar-templ?style=flat-square" alt="Go Report Card">
+  </a>
+  <a href="https://opensource.org/licenses/MIT">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="License: MIT">
+  </a>
+  <a href="https://github.com/yacobolo/datastar-templ/actions">
+    <img src="https://img.shields.io/github/actions/workflow/status/yacobolo/datastar-templ/ci.yml?branch=main&style=flat-square&label=CI" alt="CI Status">
+  </a>
+</p>
 
-## Overview
+<p align="center">
+  <img src="assets/mascot.png" alt="datastar-templ mascot" width="600">
+</p>
+
+---
 
 `datastar-templ` is a Go library that provides compile-time type safety for Datastar attributes in templ templates. It bridges the gap between Go's templ templating system and Datastar's hypermedia framework, enabling you to build reactive web applications with full IDE autocomplete and type checking.
 
@@ -19,7 +38,7 @@ Type-safe [Datastar](https://data-star.dev) attribute helpers for [templ](https:
 ## Installation
 
 ```bash
-go get github.com/yourusername/datastar-templ
+go get github.com/yacobolo/datastar-templ
 ```
 
 ## Usage
@@ -27,7 +46,7 @@ go get github.com/yourusername/datastar-templ
 Import the package (commonly aliased as `ds`):
 
 ```go
-import ds "github.com/yourusername/datastar-templ"
+import ds "github.com/yacobolo/datastar-templ"
 ```
 
 ### Basic Attributes
