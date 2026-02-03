@@ -3,7 +3,7 @@
 <p align="center">
   <strong>Type-safe Datastar attribute helpers for templ templates.</strong>
   <br>
-  <a href="https://pkg.go.dev/github.com/yacobolo/datastar-templ">
+  <a href="https://pkg.go.dev/github.com/Yacobolo/datastar-templ">
     <img src="https://img.shields.io/badge/go-reference-007d9c?logo=go&logoColor=white&style=flat-square" alt="Go Reference">
   </a>
   <a href="https://goreportcard.com/report/github.com/yacobolo/datastar-templ">
@@ -96,7 +96,7 @@ templ TodoApp() {
 
 ## API Overview
 
-See the [Go package documentation](https://pkg.go.dev/github.com/yacobolo/datastar-templ) for the complete API reference including:
+See the [Go package documentation](https://pkg.go.dev/github.com/Yacobolo/datastar-templ) for the complete API reference including:
 
 - **60+ Event Handlers**: OnClick, OnInput, OnSubmit, OnKeyDown, etc.
 - **HTTP Actions**: Get, Post, Put, Patch, Delete with options
@@ -127,5 +127,5 @@ MIT License - see LICENSE file for details
 <p align="center">
   <a href="https://data-star.dev">Datastar</a> •
   <a href="https://templ.guide">templ</a> •
-  <a href="https://pkg.go.dev/github.com/yacobolo/datastar-templ">API Reference</a>
+  <a href="https://pkg.go.dev/github.com/Yacobolo/datastar-templ">API Reference</a>
 </p>
