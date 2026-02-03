@@ -41,6 +41,14 @@
 go get github.com/yacobolo/datastar-templ
 ```
 
+## Datastar Compatibility
+
+This library is tested with **Datastar 1.0.0-RC.7**. Include Datastar in your HTML:
+
+```html
+<script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js"></script>
+```
+
 ## Usage
 
 Import the package (commonly aliased as `ds`):
@@ -302,4 +310,3 @@ MIT License - see LICENSE file for details
 
 - [Datastar Documentation](https://data-star.dev)
 - [templ Documentation](https://templ.guide)
-- [Go Documentation](https://golang.org/doc)
