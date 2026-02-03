@@ -1,0 +1,39 @@
+package ds_test
+
+import (
+	"fmt"
+	"github.com/Yacobolo/datastar-templ"
+)
+
+// ===========================================================================
+// Benchmark Test Templates
+// ===========================================================================
+
+// Plain Datastar - inline fmt.Sprintf (baseline)
+templ templatePlain(signalFoo int, signalBar string) {
+	<div
+		data-signals={ fmt.Sprintf("{foo: %d, bar: %q}", signalFoo, signalBar) }
+	></div>
+}
+
+// V2 - New variadic pairs implementation (the actual V2!)
+templ templateV2(signalFoo int, signalBar string) {
+	<div
+		{ ds.Signals(
+			ds.Int("foo", signalFoo),
+			ds.String("bar", signalBar),
+		)... }
+	></div>
+}
+
+// More complex signals with multiple types
+templ templateV2Complex(count int, msg string, enabled bool, price float64) {
+	<div
+		{ ds.Signals(
+			ds.Int("count", count),
+			ds.String("message", msg),
+			ds.Bool("enabled", enabled),
+			ds.Float("price", price),
+		)... }
+	></div>
+}

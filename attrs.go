@@ -1,7 +1,10 @@
 package ds
 
 import (
+	"encoding/json"
+	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/a-h/templ"
 )
@@ -15,14 +18,92 @@ import (
 // data-signals
 // ---------------------------------------------------------------------------
 
-// Signals patches one or more signals using object notation.
-// The map is JSON-marshaled.
+// Signal represents a typed key-value pair for signals.
+type Signal struct {
+	key   string
+	value string
+}
+
+// Int creates an integer signal.
+func Int(key string, value int) Signal {
+	return Signal{key, strconv.Itoa(value)}
+}
+
+// String creates a string signal (properly quoted for JavaScript).
+func String(key string, value string) Signal {
+	return Signal{key, strconv.Quote(value)}
+}
+
+// Bool creates a boolean signal.
+func Bool(key string, value bool) Signal {
+	return Signal{key, strconv.FormatBool(value)}
+}
+
+// Float creates a float signal.
+func Float(key string, value float64) Signal {
+	return Signal{key, strconv.FormatFloat(value, 'f', -1, 64)}
+}
+
+// JSON creates a signal from any value using JSON marshaling.
+// Use this for complex types like arrays, objects, etc.
+func JSON(key string, value any) Signal {
+	data, err := json.Marshal(value)
+	if err != nil {
+		panic("ds: failed to marshal JSON signal: " + err.Error())
+	}
+	return Signal{key, string(data)}
+}
+
+// Pool for reusing strings.Builder instances
+var signalsBuilderPool = sync.Pool{
+	New: func() interface{} {
+		b := new(strings.Builder)
+		b.Grow(128)
+		return b
+	},
+}
+
+// Signals patches one or more signals using typed helpers.
 //
-//	{ ds.Signals(map[string]any{"foo": 1, "bar": "hello"})... }
+//	{ ds.Signals(ds.Int("count", 0), ds.String("msg", "hello"))... }
 //
 // See https://data-star.dev/reference/attributes#data-signals
-func Signals(signals map[string]any, modifiers ...Modifier) templ.Attributes {
-	return val(plugin(attrSignals, modifiers), toSignals(signals))
+func Signals(signals ...Signal) templ.Attributes {
+	b := signalsBuilderPool.Get().(*strings.Builder)
+	defer func() {
+		b.Reset()
+		signalsBuilderPool.Put(b)
+	}()
+
+	// Calculate exact capacity needed
+	capacity := 2 // {}
+	for i, sig := range signals {
+		if i > 0 {
+			capacity += 2 // ", "
+		}
+		capacity += len(sig.key) + 2 + len(sig.value) // "key: value"
+	}
+
+	// Grow if needed
+	if b.Cap() < capacity {
+		b.Grow(capacity - b.Len())
+	}
+
+	// Build string with byte-level optimizations
+	b.WriteByte('{')
+	for i, sig := range signals {
+		if i > 0 {
+			b.WriteByte(',')
+			b.WriteByte(' ')
+		}
+		b.WriteString(sig.key)
+		b.WriteByte(':')
+		b.WriteByte(' ')
+		b.WriteString(sig.value)
+	}
+	b.WriteByte('}')
+
+	return templ.Attributes{"data-signals": b.String()}
 }
 
 // SignalsJSON patches signals using a pre-built JSON string value.
@@ -46,14 +127,67 @@ func SignalKey(name, expr string, modifiers ...Modifier) templ.Attributes {
 // data-computed
 // ---------------------------------------------------------------------------
 
-// Computed creates read-only computed signals using object notation.
-// Pairs are (name, expression) and are wrapped in arrow functions.
+// ComputedPair represents a computed signal name and its expression.
+type ComputedPair struct {
+	name string
+	expr string
+}
+
+// Comp creates a computed signal pair.
+func Comp(name, expr string) ComputedPair {
+	return ComputedPair{name, expr}
+}
+
+// Pool for computed signal builder
+var computedBuilderPool = sync.Pool{
+	New: func() interface{} {
+		b := new(strings.Builder)
+		b.Grow(128)
+		return b
+	},
+}
+
+// Computed creates read-only computed signals using typed pairs.
+// Each pair is wrapped in an arrow function.
 //
-//	{ ds.Computed("total", "$price * $qty")... }
+//	{ ds.Computed(ds.Comp("total", "$price * $qty"))... }
 //
 // See https://data-star.dev/reference/attributes#data-computed
-func Computed(pairs ...string) templ.Attributes {
-	return val(prefix+attrComputed, toComputed(pairs))
+func Computed(pairs ...ComputedPair) templ.Attributes {
+	b := computedBuilderPool.Get().(*strings.Builder)
+	defer func() {
+		b.Reset()
+		computedBuilderPool.Put(b)
+	}()
+
+	// Calculate exact capacity
+	capacity := 2 // {}
+	for i, pair := range pairs {
+		if i > 0 {
+			capacity += 2 // ", "
+		}
+		// 'name': () => expr
+		capacity += 1 + len(pair.name) + 11 + len(pair.expr) // "'name': () => expr"
+	}
+
+	if b.Cap() < capacity {
+		b.Grow(capacity - b.Len())
+	}
+
+	b.WriteByte('{')
+	for i, pair := range pairs {
+		if i > 0 {
+			b.WriteByte(',')
+			b.WriteByte(' ')
+		}
+		b.WriteByte('\'')
+		b.WriteString(pair.name)
+		b.WriteString("': () => ")
+		b.WriteString(pair.expr)
+	}
+	b.WriteByte('}')
+
+	return templ.Attributes{"data-computed": b.String()}
 }
 
 // ComputedKey creates a single computed signal using keyed syntax.
@@ -154,14 +288,66 @@ func Show(expr string) templ.Attributes {
 // data-class
 // ---------------------------------------------------------------------------
 
-// Class adds/removes CSS classes using object notation.
-// Pairs are (className, expression).
+// ClassPair represents a CSS class name and its binding expression.
+type ClassPair struct {
+	class string
+	expr  string
+}
+
+// C creates a class binding pair.
+func C(class, expr string) ClassPair {
+	return ClassPair{class, expr}
+}
+
+// Pool for class builder
+var classBuilderPool = sync.Pool{
+	New: func() interface{} {
+		b := new(strings.Builder)
+		b.Grow(128)
+		return b
+	},
+}
+
+// Class adds/removes CSS classes using typed pairs.
 //
-//	{ ds.Class("hidden", "$isHidden", "font-bold", "$isBold")... }
+//	{ ds.Class(ds.C("hidden", "$isHidden"), ds.C("font-bold", "$isBold"))... }
 //
 // See https://data-star.dev/reference/attributes#data-class
-func Class(pairs ...string) templ.Attributes {
-	return val(prefix+attrClass, toObject(pairs))
+func Class(pairs ...ClassPair) templ.Attributes {
+	b := classBuilderPool.Get().(*strings.Builder)
+	defer func() {
+		b.Reset()
+		classBuilderPool.Put(b)
+	}()
+
+	// Calculate exact capacity
+	capacity := 2 // {}
+	for i, pair := range pairs {
+		if i > 0 {
+			capacity += 2 // ", "
+		}
+		// 'class': expr
+		capacity += 1 + len(pair.class) + 4 + len(pair.expr) // "'class': expr"
+	}
+
+	if b.Cap() < capacity {
+		b.Grow(capacity - b.Len())
+	}
+
+	b.WriteByte('{')
+	for i, pair := range pairs {
+		if i > 0 {
+			b.WriteByte(',')
+			b.WriteByte(' ')
+		}
+		b.WriteByte('\'')
+		b.WriteString(pair.class)
+		b.WriteString("': ")
+		b.WriteString(pair.expr)
+	}
+	b.WriteByte('}')
+
+	return templ.Attributes{"data-class": b.String()}
 }
 
 // ClassKey adds/removes a single CSS class using keyed syntax.
@@ -175,14 +361,66 @@ func ClassKey(name, expr string, modifiers ...Modifier) templ.Attributes {
 // data-attr
 // ---------------------------------------------------------------------------
 
-// Attr sets HTML attributes using object notation.
-// Pairs are (attrName, expression).
+// AttrPair represents an HTML attribute name and its binding expression.
+type AttrPair struct {
+	attr string
+	expr string
+}
+
+// A creates an attribute binding pair.
+func A(attr, expr string) AttrPair {
+	return AttrPair{attr, expr}
+}
+
+// Pool for attr builder
+var attrBuilderPool = sync.Pool{
+	New: func() interface{} {
+		b := new(strings.Builder)
+		b.Grow(128)
+		return b
+	},
+}
+
+// Attr sets HTML attributes using typed pairs.
 //
-//	{ ds.Attr("title", "$tooltip", "disabled", "$loading")... }
+//	{ ds.Attr(ds.A("title", "$tooltip"), ds.A("disabled", "$loading"))... }
 //
 // See https://data-star.dev/reference/attributes#data-attr
-func Attr(pairs ...string) templ.Attributes {
-	return val(prefix+attrAttr, toObject(pairs))
+func Attr(pairs ...AttrPair) templ.Attributes {
+	b := attrBuilderPool.Get().(*strings.Builder)
+	defer func() {
+		b.Reset()
+		attrBuilderPool.Put(b)
+	}()
+
+	// Calculate exact capacity
+	capacity := 2 // {}
+	for i, pair := range pairs {
+		if i > 0 {
+			capacity += 2 // ", "
+		}
+		// 'attr': expr
+		capacity += 1 + len(pair.attr) + 4 + len(pair.expr) // "'attr': expr"
+	}
+
+	if b.Cap() < capacity {
+		b.Grow(capacity - b.Len())
+	}
+
+	b.WriteByte('{')
+	for i, pair := range pairs {
+		if i > 0 {
+			b.WriteByte(',')
+			b.WriteByte(' ')
+		}
+		b.WriteByte('\'')
+		b.WriteString(pair.attr)
+		b.WriteString("': ")
+		b.WriteString(pair.expr)
+	}
+	b.WriteByte('}')
+
+	return templ.Attributes{"data-attr": b.String()}
 }
 
 // AttrKey sets a single HTML attribute using keyed syntax.
@@ -197,14 +435,66 @@ func AttrKey(name, expr string, modifiers ...Modifier) templ.Attributes {
 // data-style
 // ---------------------------------------------------------------------------
 
-// Style sets inline CSS styles using object notation.
-// Pairs are (property, expression).
+// StylePair represents a CSS property and its binding expression.
+type StylePair struct {
+	prop string
+	expr string
+}
+
+// S creates a style binding pair.
+func S(prop, expr string) StylePair {
+	return StylePair{prop, expr}
+}
+
+// Pool for style builder
+var styleBuilderPool = sync.Pool{
+	New: func() interface{} {
+		b := new(strings.Builder)
+		b.Grow(128)
+		return b
+	},
+}
+
+// Style sets inline CSS styles using typed pairs.
 //
-//	{ ds.Style("display", "$hiding && 'none'", "color", "$red ? 'red' : 'blue'")... }
+//	{ ds.Style(ds.S("display", "$hiding && 'none'"), ds.S("color", "$textColor"))... }
 //
 // See https://data-star.dev/reference/attributes#data-style
-func Style(pairs ...string) templ.Attributes {
-	return val(prefix+attrStyle, toObject(pairs))
+func Style(pairs ...StylePair) templ.Attributes {
+	b := styleBuilderPool.Get().(*strings.Builder)
+	defer func() {
+		b.Reset()
+		styleBuilderPool.Put(b)
+	}()
+
+	// Calculate exact capacity
+	capacity := 2 // {}
+	for i, pair := range pairs {
+		if i > 0 {
+			capacity += 2 // ", "
+		}
+		// 'prop': expr
+		capacity += 1 + len(pair.prop) + 4 + len(pair.expr) // "'prop': expr"
+	}
+
+	if b.Cap() < capacity {
+		b.Grow(capacity - b.Len())
+	}
+
+	b.WriteByte('{')
+	for i, pair := range pairs {
+		if i > 0 {
+			b.WriteByte(',')
+			b.WriteByte(' ')
+		}
+		b.WriteByte('\'')
+		b.WriteString(pair.prop)
+		b.WriteString("': ")
+		b.WriteString(pair.expr)
+	}
+	b.WriteByte('}')
+
+	return templ.Attributes{"data-style": b.String()}
 }
 
 // StyleKey sets a single inline CSS style using keyed syntax.

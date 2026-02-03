@@ -28,6 +28,7 @@
 ## Features
 
 - **Type-Safe**: Compile-time checks for Datastar attributes with full IDE support
+- **High Performance**: Optimized with sync.Pool and precise capacity allocation (~200-300ns/op)
 - **Complete Coverage**: 60+ DOM events, HTTP actions, signals, and modifiers
 - **templ Integration**: Native templ.Attributes for seamless template usage
 
@@ -51,11 +52,11 @@ import ds "github.com/yacobolo/datastar-templ"
 
 ```go
 templ TodoApp() {
-    <div { ds.Signals(map[string]any{
-        "todos": []Todo{},
-        "newTodo": "",
-        "filter": "",
-    })... }>
+    <div { ds.Signals(
+        ds.JSON("todos", []Todo{}),
+        ds.String("newTodo", ""),
+        ds.String("filter", ""),
+    )... }>
         // Data binding
         <input 
             type="text"
@@ -75,7 +76,7 @@ templ TodoApp() {
         // Conditional rendering + merging attributes
         <div { ds.Merge(
             ds.Show("$todos.length > 0"),
-            ds.Class("active", "$filter !== ''"),
+            ds.Class(ds.C("active", "$filter !== ''")),
         )... }>
             <span { ds.Text("$todos.length + ' items'")... }></span>
         </div>
@@ -94,10 +95,50 @@ templ TodoApp() {
 }
 ```
 
+### Type-Safe Signal Helpers
+
+V2 introduces type-safe signal helpers that eliminate runtime errors:
+
+```go
+// Instead of map[string]any
+ds.Signals(
+    ds.Int("count", 0),
+    ds.String("message", "Hello"),
+    ds.Bool("isOpen", true),
+    ds.Float("price", 19.99),
+    ds.JSON("user", userData), // For complex types
+)
+
+// Type-safe class bindings
+ds.Class(
+    ds.C("hidden", "$isHidden"),
+    ds.C("font-bold", "$isBold"),
+)
+
+// Type-safe computed signals
+ds.Computed(
+    ds.Comp("total", "$price * $qty"),
+)
+
+// Type-safe attribute bindings
+ds.Attr(
+    ds.A("disabled", "$loading"),
+    ds.A("title", "$tooltip"),
+)
+
+// Type-safe style bindings
+ds.Style(
+    ds.S("color", "$textColor"),
+    ds.S("display", "$visible ? 'block' : 'none'"),
+)
+```
+
 ## API Overview
 
 See the [Go package documentation](https://pkg.go.dev/github.com/Yacobolo/datastar-templ) for the complete API reference including:
 
+- **Signal Helpers**: Int(), String(), Bool(), Float(), JSON() for type-safe signals
+- **Pair Helpers**: C(), Comp(), A(), S() for type-safe class/computed/attr/style bindings
 - **60+ Event Handlers**: OnClick, OnInput, OnSubmit, OnKeyDown, etc.
 - **HTTP Actions**: Get, Post, Put, Patch, Delete with options
 - **Signal Management**: Signals, Computed, Bind, SignalKey
@@ -105,6 +146,26 @@ See the [Go package documentation](https://pkg.go.dev/github.com/Yacobolo/datast
 - **Modifiers**: Debounce, Throttle, Once, Passive, Capture, etc.
 - **Watchers**: OnIntersect, OnInterval, OnSignalPatch
 - **Utilities**: Merge, Ref, Indicator, Init, Effect
+
+## Performance
+
+V2 is highly optimized using:
+- **sync.Pool** for builder reuse across requests
+- **Precise capacity allocation** to avoid buffer reallocation
+- **Direct string building** instead of JSON marshaling for primitives
+
+Benchmark results (Apple M2):
+```
+BenchmarkSignals/simple-8      203.0 ns/op    392 B/op    5 allocs/op
+BenchmarkClass/single-8        143.0 ns/op    376 B/op    4 allocs/op
+BenchmarkComputed/single-8     170.2 ns/op    384 B/op    4 allocs/op
+```
+
+The implementation is only ~1.7x slower than raw inline `fmt.Sprintf`, while providing:
+- ✅ Type safety at compile time
+- ✅ Consistent API across all attributes
+- ✅ Better maintainability
+- ✅ No runtime reflection
 
 ## Development
 

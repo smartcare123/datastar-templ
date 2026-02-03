@@ -22,21 +22,17 @@ func ExampleOnClick_withModifiers() {
 
 // Example demonstrates creating reactive signals
 func ExampleSignals() {
-	attrs := ds.Signals(map[string]any{"count": 0, "message": "Hello"})
-	// JSON encoding may vary in key order, so we just check it contains expected keys
-	signal := attrs["data-signals"]
-	fmt.Printf("Signal contains count: %t\n", signal != "")
-	// Output: Signal contains count: true
+	attrs := ds.Signals(ds.Int("count", 0), ds.String("message", "Hello"))
+	fmt.Println(attrs["data-signals"])
+	// Output: {count: 0, message: "Hello"}
 }
 
-// Example demonstrates nested signal objects
+// Example demonstrates nested signal objects using JSON helper
 func ExampleSignals_nested() {
-	attrs := ds.Signals(map[string]any{
-		"user": map[string]any{
-			"name": "John",
-			"age":  30,
-		},
-	})
+	attrs := ds.Signals(ds.JSON("user", map[string]any{
+		"name": "John",
+		"age":  30,
+	}))
 	signal := attrs["data-signals"]
 	fmt.Printf("Signal is not empty: %t\n", signal != "")
 	// Output: Signal is not empty: true
@@ -58,10 +54,9 @@ func ExampleBindExpr() {
 
 // Example demonstrates computed signals
 func ExampleComputed() {
-	attrs := ds.Computed("double", "() => $count * 2")
-	computed := attrs["data-computed"]
-	fmt.Printf("Computed is not empty: %t\n", computed != "")
-	// Output: Computed is not empty: true
+	attrs := ds.Computed(ds.Comp("double", "$count * 2"))
+	fmt.Println(attrs["data-computed"])
+	// Output: {'double': () => $count * 2}
 }
 
 // Example demonstrates keyed computed signal
@@ -73,10 +68,9 @@ func ExampleComputedKey() {
 
 // Example demonstrates conditional CSS class
 func ExampleClass() {
-	attrs := ds.Class("active", "$isActive")
-	class := attrs["data-class"]
-	fmt.Printf("Class is not empty: %t\n", class != "")
-	// Output: Class is not empty: true
+	attrs := ds.Class(ds.C("active", "$isActive"))
+	fmt.Println(attrs["data-class"])
+	// Output: {'active': $isActive}
 }
 
 // Example demonstrates keyed class syntax
