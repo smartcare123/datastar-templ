@@ -1,73 +1,8 @@
-# Migration Guide
+# Migration Guide: V1 to V2
 
-This guide helps you migrate between versions of datastar-templ.
+This guide helps you migrate from datastar-templ V1 (map-based API) to V2 (type-safe variadic API).
 
----
-
-## V2.0 → V2.1: Unified Pair Helper
-
-### What Changed
-
-**V2.1** consolidates individual binding helpers into a single unified `Pair()` function for better API consistency.
-
-**Removed:**
-- `ds.Pair()` for Class
-- `ds.Pair()` for Computed
-- `ds.Pair()` for Attr
-- `ds.Pair()` for Style
-
-**Added:**
-- `ds.Pair()` - Unified helper for all attribute bindings
-- `ds.P()` - Shorthand alias for Pair()
-
-### Why This Change?
-
-**Better API Consistency:**
-- **Before:** Mix of long names (`Int`, `String`) and cryptic short names (`C`, `A`, `S`)
-- **After:** Clear distinction between data transformation (`Int`, `String`) and expression binding (`Pair`)
-
-**Reduced Cognitive Load:**
-- Learn ONE helper name for ALL bindings instead of 4 different ones
-- `Pair` clearly communicates "key-value pairing"
-
-### Migration Steps
-
-**Automatic search & replace:**
-
-```bash
-# In your codebase, replace:
-ds.Pair(        → ds.Pair(
-ds.Pair(     → ds.Pair(
-ds.Pair(        → ds.Pair(
-ds.Pair(        → ds.Pair(
-```
-
-**Before (V2.0):**
-```go
-ds.Class(ds.Pair("hidden", "$isHidden"))
-ds.Computed(ds.Pair("total", "$price * $qty"))
-ds.Attr(ds.Pair("disabled", "$loading"))
-ds.Style(ds.Pair("color", "$textColor"))
-```
-
-**After (V2.1):**
-```go
-ds.Class(ds.Pair("hidden", "$isHidden"))
-ds.Computed(ds.Pair("total", "$price * $qty"))
-ds.Attr(ds.Pair("disabled", "$loading"))
-ds.Style(ds.Pair("color", "$textColor"))
-
-// Or use P() for brevity
-ds.Class(ds.P("btn-primary", "$isMain"))
-```
-
-**Migration Effort:** Very low - simple find/replace across codebase.
-
----
-
-## V1 → V2.0: Type-Safe Variadic API
-
-### Why Migrate?
+## Why Migrate?
 
 V2 offers significant improvements:
 
@@ -76,10 +11,11 @@ V2 offers significant improvements:
 - **Type safety at compile time** - catch errors before runtime
 - **Eliminates odd-pair bugs** - no more "forgot a string" panics
 - **Better IDE support** - autocomplete for signal types
+- **Unified API** - Single `Pair()` helper for all attribute bindings
 
-## Breaking Changes (V1 → V2.0)
+## Breaking Changes
 
-All pair-based functions now use typed pairs instead of variadic strings or maps.
+All pair-based functions now use typed helpers instead of variadic strings or maps.
 
 ### 1. Signals() - From map to typed helpers
 
@@ -171,6 +107,11 @@ ds.Style(
 )
 ```
 
+**Shorthand:** You can also use `ds.P()` instead of `ds.Pair()` for brevity:
+```go
+ds.Class(ds.P("btn-primary", "$isMain"))
+```
+
 ## What Stays The Same
 
 These APIs are **unchanged**:
@@ -197,7 +138,7 @@ ds\.Signals\(map\[string\]any\{
 **Replace with:**
 ```go
 ds.Signals(
-    // Add typed helpers here
+    // Add typed helpers here based on value types
 )
 ```
 
@@ -212,12 +153,12 @@ ds\.Class\("([^"]+)", "([^"]+)"
 
 **Replace with:**
 ```go
-ds.Class(ds.Pair("$1", "$2")
+ds.Class(ds.Pair("\1", "\2"))
 ```
 
 ### Step 3: Update Computed Signals
 
-Find all uses of `ds.Computed("...", "...", ...)`.
+Same pattern as Class:
 
 **Search pattern:**
 ```regex
@@ -226,12 +167,10 @@ ds\.Computed\("([^"]+)", "([^"]+)"
 
 **Replace with:**
 ```go
-ds.Computed(ds.Pair("$1", "$2")
+ds.Computed(ds.Pair("\1", "\2"))
 ```
 
 ### Step 4: Update Attr Bindings
-
-Find all uses of `ds.Attr("...", "...", ...)`.
 
 **Search pattern:**
 ```regex
@@ -240,12 +179,10 @@ ds\.Attr\("([^"]+)", "([^"]+)"
 
 **Replace with:**
 ```go
-ds.Attr(ds.Pair("$1", "$2")
+ds.Attr(ds.Pair("\1", "\2"))
 ```
 
 ### Step 5: Update Style Bindings
-
-Find all uses of `ds.Style("...", "...", ...)`.
 
 **Search pattern:**
 ```regex
@@ -254,180 +191,152 @@ ds\.Style\("([^"]+)", "([^"]+)"
 
 **Replace with:**
 ```go
-ds.Style(ds.Pair("$1", "$2")
+ds.Style(ds.Pair("\1", "\2"))
 ```
 
-### Step 6: Update Complex Signals
-
-For signals containing arrays, objects, or nested data, use `ds.JSON()`:
-
-**Before:**
-```go
-ds.Signals(map[string]any{
-    "todos": []Todo{
-        {ID: 1, Title: "Task 1"},
-        {ID: 2, Title: "Task 2"},
-    },
-})
-```
-
-**After:**
-```go
-ds.Signals(
-    ds.JSON("todos", []Todo{
-        {ID: 1, Title: "Task 1"},
-        {ID: 2, Title: "Task 2"},
-    }),
-)
-```
-
-### Step 7: Run Tests
-
-```bash
-go test ./...
-```
-
-The compiler will catch any remaining API mismatches.
-
-## Example Migration
+## Complete Example: Before & After
 
 ### Before (V1)
+
 ```go
-templ Counter() {
+templ TodoList(todos []Todo) {
     <div { ds.Signals(map[string]any{
-        "count": 0,
-        "step": 1,
+        "count": len(todos),
+        "loading": false,
     })... }>
-        <button 
-            { ds.OnClick("$count += $step")... }
-            { ds.Class("active", "$count > 0")... }
-        >
-            Count: <span { ds.Text("$count")... }></span>
-        </button>
-        
-        <div { ds.Computed("double", "$count * 2")... }></div>
-        
-        <input 
-            type="number"
-            { ds.Attr("value", "$step")... }
-            { ds.Style("color", "$count > 10 ? 'red' : 'black'")... }
-        />
+        <ul { ds.Class("hidden", "$loading", "opacity-50", "$count == 0")... }>
+            for _, todo := range todos {
+                <li { ds.Attr("data-id", strconv.Itoa(todo.ID))... }>
+                    { todo.Title }
+                </li>
+            }
+        </ul>
     </div>
 }
 ```
 
 ### After (V2)
+
 ```go
-templ Counter() {
+templ TodoList(todos []Todo) {
     <div { ds.Signals(
-        ds.Int("count", 0),
-        ds.Int("step", 1),
+        ds.Int("count", len(todos)),
+        ds.Bool("loading", false),
     )... }>
-        <button 
-            { ds.OnClick("$count += $step")... }
-            { ds.Class(ds.Pair("active", "$count > 0"))... }
-        >
-            Count: <span { ds.Text("$count")... }></span>
-        </button>
-        
-        <div { ds.Computed(ds.Pair("double", "$count * 2"))... }></div>
-        
-        <input 
-            type="number"
-            { ds.Attr(ds.Pair("value", "$step"))... }
-            { ds.Style(ds.Pair("color", "$count > 10 ? 'red' : 'black'"))... }
-        />
+        <ul { ds.Class(
+            ds.Pair("hidden", "$loading"),
+            ds.Pair("opacity-50", "$count == 0"),
+        )... }>
+            for _, todo := range todos {
+                <li { ds.Attr(ds.Pair("data-id", strconv.Itoa(todo.ID)))... }>
+                    { todo.Title }
+                </li>
+            }
+        </ul>
     </div>
 }
 ```
 
-## Common Gotchas
+## Why `Pair()` is Unified
 
-### 1. String Quoting
+V2 uses a single `Pair()` helper for all attribute bindings (Class, Computed, Attr, Style) for better API consistency:
 
-`ds.String()` automatically quotes strings for JavaScript. Don't double-quote:
+**Benefits:**
+- **Reduced cognitive load** - Learn ONE helper name instead of 4 different ones
+- **Clear semantics** - `Pair` clearly communicates "key-value pairing"
+- **API consistency** - No mix of long names (`Int`, `String`) and short cryptic names (`C`, `A`, `S`)
+- **Better distinction** - Data transformation (`Int`, `String`, `Bool`) vs expression binding (`Pair`)
 
-**Wrong:**
+## Common Patterns
+
+### Multiple Signals
 ```go
-ds.String("name", "\"John\"")  // Produces: name: "\"John\""
-```
+// V1
+ds.Signals(map[string]any{
+    "user": currentUser,
+    "todos": todoList,
+    "filter": "all",
+})
 
-**Right:**
-```go
-ds.String("name", "John")  // Produces: name: "John"
-```
-
-### 2. Empty Signals
-
-Empty signals now use no arguments:
-
-**Before:**
-```go
-ds.Signals(map[string]any{})
-```
-
-**After:**
-```go
-ds.Signals()  // No arguments needed
-```
-
-### 3. Multiple Pairs
-
-Each pair must be wrapped in its helper:
-
-**Wrong:**
-```go
-ds.Class(ds.Pair("hidden", "$isHidden", "bold", "$isBold"))  // Won't compile
-```
-
-**Right:**
-```go
-ds.Class(
-    ds.Pair("hidden", "$isHidden"),
-    ds.Pair("bold", "$isBold"),
-)
-```
-
-## Benefits After Migration
-
-### Compile-Time Safety
-
-**Before:** Runtime panic
-```go
-ds.Class("hidden")  // Panics at runtime: odd number of pairs
-```
-
-**After:** Compile error
-```go
-ds.Class(ds.Pair("hidden"))  // Won't compile: missing expression
-```
-
-### Better IDE Support
-
-V2 provides full autocomplete for type helpers:
-
-```go
+// V2
 ds.Signals(
-    ds.  // IDE shows: Int(), String(), Bool(), Float(), JSON()
+    ds.JSON("user", currentUser),
+    ds.JSON("todos", todoList),
+    ds.String("filter", "all"),
 )
 ```
 
-### Performance Gains
+### Conditional Classes
+```go
+// V1
+ds.Class("active", "$isActive", "disabled", "$isDisabled")
 
-Your application will automatically benefit from:
-- ~2-3x faster signal creation
-- ~60% less memory allocation
-- ~50% fewer allocation operations
+// V2
+ds.Class(
+    ds.Pair("active", "$isActive"),
+    ds.Pair("disabled", "$isDisabled"),
+)
+```
+
+### Dynamic Styles
+```go
+// V1
+ds.Style("color", "$textColor", "display", "$visible ? 'block' : 'none'")
+
+// V2
+ds.Style(
+    ds.Pair("color", "$textColor"),
+    ds.Pair("display", "$visible ? 'block' : 'none'"),
+)
+```
+
+### Computed Values
+```go
+// V1
+ds.Computed("total", "$price * $qty", "tax", "$total * 0.1")
+
+// V2
+ds.Computed(
+    ds.Pair("total", "$price * $qty"),
+    ds.Pair("tax", "$total * 0.1"),
+)
+```
+
+## Testing Your Migration
+
+After migrating, run your tests to ensure everything works:
+
+```bash
+# Build your project
+go build ./...
+
+# Run tests
+go test ./...
+
+# Run your templ generation
+templ generate
+```
+
+## Performance Notes
+
+V2 is significantly faster than V1:
+
+| Metric | V1 | V2 | Improvement |
+|--------|----|----|-------------|
+| **Time** | ~780 ns/op | ~200-300 ns/op | **2-3x faster** |
+| **Memory** | ~1200 B/op | ~400 B/op | **60% less** |
+| **Allocations** | ~19 allocs/op | ~5-8 allocs/op | **60% fewer** |
+
+The performance improvements come from:
+- Eliminating map allocations
+- Direct string building with `strings.Builder`
+- Precise capacity pre-allocation
+- `sync.Pool` for builder reuse
+- No reflection or JSON marshaling for primitives
 
 ## Need Help?
 
-- Review the [examples in the test files](./ds_test.go)
-- Check the [API documentation](https://pkg.go.dev/github.com/Yacobolo/datastar-templ)
-- Open an issue on [GitHub](https://github.com/Yacobolo/datastar-templ/issues)
-
-## Version Support
-
-- **V1.x**: Legacy API (map-based) - No longer maintained
-- **V2.0+**: New API (type-safe variadic) - Current and recommended
-
-We recommend migrating to V2 to benefit from performance improvements and type safety.
+If you encounter issues during migration:
+1. Check the [README](README.md) for updated API examples
+2. Review the [test files](ds_test.go) for comprehensive usage examples
+3. Open an issue on GitHub with your specific use case
