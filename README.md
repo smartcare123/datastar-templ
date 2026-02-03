@@ -76,7 +76,7 @@ templ TodoApp() {
         // Conditional rendering + merging attributes
         <div { ds.Merge(
             ds.Show("$todos.length > 0"),
-            ds.Class(ds.C("active", "$filter !== ''")),
+            ds.Class(ds.Pair("active", "$filter !== ''")),
         )... }>
             <span { ds.Text("$todos.length + ' items'")... }></span>
         </div>
@@ -95,50 +95,57 @@ templ TodoApp() {
 }
 ```
 
-### Type-Safe Signal Helpers
+### Type-Safe Helpers
 
-V2 introduces type-safe signal helpers that eliminate runtime errors:
+V2 introduces type-safe helpers that eliminate runtime errors and provide clear API semantics:
 
+**Signal Helpers** (for data transformation):
 ```go
-// Instead of map[string]any
 ds.Signals(
-    ds.Int("count", 0),
-    ds.String("message", "Hello"),
-    ds.Bool("isOpen", true),
-    ds.Float("price", 19.99),
-    ds.JSON("user", userData), // For complex types
-)
-
-// Type-safe class bindings
-ds.Class(
-    ds.C("hidden", "$isHidden"),
-    ds.C("font-bold", "$isBold"),
-)
-
-// Type-safe computed signals
-ds.Computed(
-    ds.Comp("total", "$price * $qty"),
-)
-
-// Type-safe attribute bindings
-ds.Attr(
-    ds.A("disabled", "$loading"),
-    ds.A("title", "$tooltip"),
-)
-
-// Type-safe style bindings
-ds.Style(
-    ds.S("color", "$textColor"),
-    ds.S("display", "$visible ? 'block' : 'none'"),
+    ds.Int("count", 0),           // Converts int to string
+    ds.String("message", "Hello"), // Adds quotes for JavaScript
+    ds.Bool("isOpen", true),       // Formats boolean
+    ds.Float("price", 19.99),      // Formats float
+    ds.JSON("user", userData),     // Marshals complex types
 )
 ```
+
+**Pair Helper** (for expression bindings):
+```go
+// Use ds.Pair() for all attribute bindings
+ds.Class(
+    ds.Pair("hidden", "$isHidden"),
+    ds.Pair("font-bold", "$isBold"),
+)
+
+ds.Computed(
+    ds.Pair("total", "$price * $qty"),
+)
+
+ds.Attr(
+    ds.Pair("disabled", "$loading"),
+    ds.Pair("title", "$tooltip"),
+)
+
+ds.Style(
+    ds.Pair("color", "$textColor"),
+    ds.Pair("display", "$visible ? 'block' : 'none'"),
+)
+
+// Or use ds.P() shorthand for brevity
+ds.Class(ds.P("btn-primary", "$isMain"))
+```
+
+**Why two different helpers?**
+- **Signal helpers** (`Int`, `String`, etc.) transform Go values into JavaScript-compatible strings
+- **Pair helper** (`Pair` or `P`) simply pairs keys with expressions - no transformation needed
 
 ## API Overview
 
 See the [Go package documentation](https://pkg.go.dev/github.com/Yacobolo/datastar-templ) for the complete API reference including:
 
-- **Signal Helpers**: Int(), String(), Bool(), Float(), JSON() for type-safe signals
-- **Pair Helpers**: C(), Comp(), A(), S() for type-safe class/computed/attr/style bindings
+- **Signal Helpers**: Int(), String(), Bool(), Float(), JSON() for type-safe data transformation
+- **Pair Helper**: Pair() (or P()) for unified key-value expression bindings
 - **60+ Event Handlers**: OnClick, OnInput, OnSubmit, OnKeyDown, etc.
 - **HTTP Actions**: Get, Post, Put, Patch, Delete with options
 - **Signal Management**: Signals, Computed, Bind, SignalKey

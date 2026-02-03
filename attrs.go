@@ -54,6 +54,30 @@ func JSON(key string, value any) Signal {
 	return Signal{key, string(data)}
 }
 
+// PairItem represents a key-value expression binding for attributes.
+// Used by Class, Computed, Attr, and Style functions.
+type PairItem struct {
+	key  string
+	expr string
+}
+
+// Pair creates a key-value expression binding.
+// This is the recommended helper for all attribute bindings.
+//
+//	ds.Class(ds.Pair("hidden", "$isHidden"))
+//	ds.Computed(ds.Pair("total", "$price * $qty"))
+//	ds.Attr(ds.Pair("disabled", "$loading"))
+//	ds.Style(ds.Pair("color", "$textColor"))
+func Pair(key, expr string) PairItem {
+	return PairItem{key, expr}
+}
+
+// P is a shorthand alias for Pair.
+// Use this if you prefer more concise template code.
+func P(key, expr string) PairItem {
+	return PairItem{key, expr}
+}
+
 // Pool for reusing strings.Builder instances
 var signalsBuilderPool = sync.Pool{
 	New: func() interface{} {
@@ -127,17 +151,6 @@ func SignalKey(name, expr string, modifiers ...Modifier) templ.Attributes {
 // data-computed
 // ---------------------------------------------------------------------------
 
-// ComputedPair represents a computed signal name and its expression.
-type ComputedPair struct {
-	name string
-	expr string
-}
-
-// Comp creates a computed signal pair.
-func Comp(name, expr string) ComputedPair {
-	return ComputedPair{name, expr}
-}
-
 // Pool for computed signal builder
 var computedBuilderPool = sync.Pool{
 	New: func() interface{} {
@@ -150,10 +163,10 @@ var computedBuilderPool = sync.Pool{
 // Computed creates read-only computed signals using typed pairs.
 // Each pair is wrapped in an arrow function.
 //
-//	{ ds.Computed(ds.Comp("total", "$price * $qty"))... }
+//	{ ds.Computed(ds.Pair("total", "$price * $qty"))... }
 //
 // See https://data-star.dev/reference/attributes#data-computed
-func Computed(pairs ...ComputedPair) templ.Attributes {
+func Computed(pairs ...PairItem) templ.Attributes {
 	b := computedBuilderPool.Get().(*strings.Builder)
 	defer func() {
 		b.Reset()
@@ -166,8 +179,8 @@ func Computed(pairs ...ComputedPair) templ.Attributes {
 		if i > 0 {
 			capacity += 2 // ", "
 		}
-		// 'name': () => expr
-		capacity += 1 + len(pair.name) + 11 + len(pair.expr) // "'name': () => expr"
+		// 'key': () => expr
+		capacity += 1 + len(pair.key) + 11 + len(pair.expr) // "'key': () => expr"
 	}
 
 	if b.Cap() < capacity {
@@ -181,7 +194,7 @@ func Computed(pairs ...ComputedPair) templ.Attributes {
 			b.WriteByte(' ')
 		}
 		b.WriteByte('\'')
-		b.WriteString(pair.name)
+		b.WriteString(pair.key)
 		b.WriteString("': () => ")
 		b.WriteString(pair.expr)
 	}
@@ -288,17 +301,6 @@ func Show(expr string) templ.Attributes {
 // data-class
 // ---------------------------------------------------------------------------
 
-// ClassPair represents a CSS class name and its binding expression.
-type ClassPair struct {
-	class string
-	expr  string
-}
-
-// C creates a class binding pair.
-func C(class, expr string) ClassPair {
-	return ClassPair{class, expr}
-}
-
 // Pool for class builder
 var classBuilderPool = sync.Pool{
 	New: func() interface{} {
@@ -310,10 +312,10 @@ var classBuilderPool = sync.Pool{
 
 // Class adds/removes CSS classes using typed pairs.
 //
-//	{ ds.Class(ds.C("hidden", "$isHidden"), ds.C("font-bold", "$isBold"))... }
+//	{ ds.Class(ds.Pair("hidden", "$isHidden"), ds.Pair("font-bold", "$isBold"))... }
 //
 // See https://data-star.dev/reference/attributes#data-class
-func Class(pairs ...ClassPair) templ.Attributes {
+func Class(pairs ...PairItem) templ.Attributes {
 	b := classBuilderPool.Get().(*strings.Builder)
 	defer func() {
 		b.Reset()
@@ -326,8 +328,8 @@ func Class(pairs ...ClassPair) templ.Attributes {
 		if i > 0 {
 			capacity += 2 // ", "
 		}
-		// 'class': expr
-		capacity += 1 + len(pair.class) + 4 + len(pair.expr) // "'class': expr"
+		// 'key': expr
+		capacity += 1 + len(pair.key) + 4 + len(pair.expr) // "'key': expr"
 	}
 
 	if b.Cap() < capacity {
@@ -341,7 +343,7 @@ func Class(pairs ...ClassPair) templ.Attributes {
 			b.WriteByte(' ')
 		}
 		b.WriteByte('\'')
-		b.WriteString(pair.class)
+		b.WriteString(pair.key)
 		b.WriteString("': ")
 		b.WriteString(pair.expr)
 	}
@@ -361,17 +363,6 @@ func ClassKey(name, expr string, modifiers ...Modifier) templ.Attributes {
 // data-attr
 // ---------------------------------------------------------------------------
 
-// AttrPair represents an HTML attribute name and its binding expression.
-type AttrPair struct {
-	attr string
-	expr string
-}
-
-// A creates an attribute binding pair.
-func A(attr, expr string) AttrPair {
-	return AttrPair{attr, expr}
-}
-
 // Pool for attr builder
 var attrBuilderPool = sync.Pool{
 	New: func() interface{} {
@@ -383,10 +374,10 @@ var attrBuilderPool = sync.Pool{
 
 // Attr sets HTML attributes using typed pairs.
 //
-//	{ ds.Attr(ds.A("title", "$tooltip"), ds.A("disabled", "$loading"))... }
+//	{ ds.Attr(ds.Pair("title", "$tooltip"), ds.Pair("disabled", "$loading"))... }
 //
 // See https://data-star.dev/reference/attributes#data-attr
-func Attr(pairs ...AttrPair) templ.Attributes {
+func Attr(pairs ...PairItem) templ.Attributes {
 	b := attrBuilderPool.Get().(*strings.Builder)
 	defer func() {
 		b.Reset()
@@ -399,8 +390,8 @@ func Attr(pairs ...AttrPair) templ.Attributes {
 		if i > 0 {
 			capacity += 2 // ", "
 		}
-		// 'attr': expr
-		capacity += 1 + len(pair.attr) + 4 + len(pair.expr) // "'attr': expr"
+		// 'key': expr
+		capacity += 1 + len(pair.key) + 4 + len(pair.expr) // "'key': expr"
 	}
 
 	if b.Cap() < capacity {
@@ -414,7 +405,7 @@ func Attr(pairs ...AttrPair) templ.Attributes {
 			b.WriteByte(' ')
 		}
 		b.WriteByte('\'')
-		b.WriteString(pair.attr)
+		b.WriteString(pair.key)
 		b.WriteString("': ")
 		b.WriteString(pair.expr)
 	}
@@ -435,17 +426,6 @@ func AttrKey(name, expr string, modifiers ...Modifier) templ.Attributes {
 // data-style
 // ---------------------------------------------------------------------------
 
-// StylePair represents a CSS property and its binding expression.
-type StylePair struct {
-	prop string
-	expr string
-}
-
-// S creates a style binding pair.
-func S(prop, expr string) StylePair {
-	return StylePair{prop, expr}
-}
-
 // Pool for style builder
 var styleBuilderPool = sync.Pool{
 	New: func() interface{} {
@@ -457,10 +437,10 @@ var styleBuilderPool = sync.Pool{
 
 // Style sets inline CSS styles using typed pairs.
 //
-//	{ ds.Style(ds.S("display", "$hiding && 'none'"), ds.S("color", "$textColor"))... }
+//	{ ds.Style(ds.Pair("display", "$hiding && 'none'"), ds.Pair("color", "$textColor"))... }
 //
 // See https://data-star.dev/reference/attributes#data-style
-func Style(pairs ...StylePair) templ.Attributes {
+func Style(pairs ...PairItem) templ.Attributes {
 	b := styleBuilderPool.Get().(*strings.Builder)
 	defer func() {
 		b.Reset()
@@ -473,8 +453,8 @@ func Style(pairs ...StylePair) templ.Attributes {
 		if i > 0 {
 			capacity += 2 // ", "
 		}
-		// 'prop': expr
-		capacity += 1 + len(pair.prop) + 4 + len(pair.expr) // "'prop': expr"
+		// 'key': expr
+		capacity += 1 + len(pair.key) + 4 + len(pair.expr) // "'key': expr"
 	}
 
 	if b.Cap() < capacity {
@@ -488,7 +468,7 @@ func Style(pairs ...StylePair) templ.Attributes {
 			b.WriteByte(' ')
 		}
 		b.WriteByte('\'')
-		b.WriteString(pair.prop)
+		b.WriteString(pair.key)
 		b.WriteString("': ")
 		b.WriteString(pair.expr)
 	}

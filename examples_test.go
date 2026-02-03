@@ -54,7 +54,7 @@ func ExampleBindExpr() {
 
 // Example demonstrates computed signals
 func ExampleComputed() {
-	attrs := ds.Computed(ds.Comp("double", "$count * 2"))
+	attrs := ds.Computed(ds.Pair("double", "$count * 2"))
 	fmt.Println(attrs["data-computed"])
 	// Output: {'double': () => $count * 2}
 }
@@ -68,7 +68,7 @@ func ExampleComputedKey() {
 
 // Example demonstrates conditional CSS class
 func ExampleClass() {
-	attrs := ds.Class(ds.C("active", "$isActive"))
+	attrs := ds.Class(ds.Pair("active", "$isActive"))
 	fmt.Println(attrs["data-class"])
 	// Output: {'active': $isActive}
 }

@@ -451,15 +451,15 @@ func TestSignalKey(t *testing.T) {
 
 func TestComputed(t *testing.T) {
 	t.Run("single", func(t *testing.T) {
-		attrs := ds.Computed(ds.Comp("total", "$price * $qty"))
+		attrs := ds.Computed(ds.Pair("total", "$price * $qty"))
 		require.Len(t, attrs, 1)
 		assert.Equal(t, "{'total': () => $price * $qty}", attrs["data-computed"])
 	})
 
 	t.Run("multiple", func(t *testing.T) {
 		attrs := ds.Computed(
-			ds.Comp("total", "$price * $qty"),
-			ds.Comp("tax", "$total * 0.1"),
+			ds.Pair("total", "$price * $qty"),
+			ds.Pair("tax", "$total * 0.1"),
 		)
 		require.Len(t, attrs, 1)
 		assert.Equal(t, "{'total': () => $price * $qty, 'tax': () => $total * 0.1}", attrs["data-computed"])
@@ -476,15 +476,15 @@ func TestComputedKey(t *testing.T) {
 
 func TestClass(t *testing.T) {
 	t.Run("single pair", func(t *testing.T) {
-		attrs := ds.Class(ds.C("hidden", "$isHidden"))
+		attrs := ds.Class(ds.Pair("hidden", "$isHidden"))
 		require.Len(t, attrs, 1)
 		assert.Equal(t, "{'hidden': $isHidden}", attrs["data-class"])
 	})
 
 	t.Run("multiple pairs", func(t *testing.T) {
 		attrs := ds.Class(
-			ds.C("hidden", "$isHidden"),
-			ds.C("font-bold", "$isBold"),
+			ds.Pair("hidden", "$isHidden"),
+			ds.Pair("font-bold", "$isBold"),
 		)
 		require.Len(t, attrs, 1)
 		assert.Equal(t, "{'hidden': $isHidden, 'font-bold': $isBold}", attrs["data-class"])
@@ -509,15 +509,15 @@ func TestClassKey(t *testing.T) {
 
 func TestAttr(t *testing.T) {
 	t.Run("single pair", func(t *testing.T) {
-		attrs := ds.Attr(ds.A("title", "$tooltip"))
+		attrs := ds.Attr(ds.Pair("title", "$tooltip"))
 		require.Len(t, attrs, 1)
 		assert.Equal(t, "{'title': $tooltip}", attrs["data-attr"])
 	})
 
 	t.Run("multiple pairs", func(t *testing.T) {
 		attrs := ds.Attr(
-			ds.A("title", "$tooltip"),
-			ds.A("disabled", "$loading"),
+			ds.Pair("title", "$tooltip"),
+			ds.Pair("disabled", "$loading"),
 		)
 		require.Len(t, attrs, 1)
 		assert.Equal(t, "{'title': $tooltip, 'disabled': $loading}", attrs["data-attr"])
@@ -548,15 +548,15 @@ func TestAttrKey(t *testing.T) {
 
 func TestStyle(t *testing.T) {
 	t.Run("single pair", func(t *testing.T) {
-		attrs := ds.Style(ds.S("display", "$hiding && 'none'"))
+		attrs := ds.Style(ds.Pair("display", "$hiding && 'none'"))
 		require.Len(t, attrs, 1)
 		assert.Equal(t, "{'display': $hiding && 'none'}", attrs["data-style"])
 	})
 
 	t.Run("multiple pairs", func(t *testing.T) {
 		attrs := ds.Style(
-			ds.S("display", "'none'"),
-			ds.S("color", "'red'"),
+			ds.Pair("display", "'none'"),
+			ds.Pair("color", "'red'"),
 		)
 		require.Len(t, attrs, 1)
 		assert.Equal(t, "{'display': 'none', 'color': 'red'}", attrs["data-style"])

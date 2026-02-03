@@ -1,8 +1,73 @@
-# Migration Guide: V1 to V2
+# Migration Guide
 
-This guide helps you migrate from datastar-templ V1 (map-based API) to V2 (type-safe variadic API).
+This guide helps you migrate between versions of datastar-templ.
 
-## Why Migrate?
+---
+
+## V2.0 → V2.1: Unified Pair Helper
+
+### What Changed
+
+**V2.1** consolidates individual binding helpers into a single unified `Pair()` function for better API consistency.
+
+**Removed:**
+- `ds.Pair()` for Class
+- `ds.Pair()` for Computed
+- `ds.Pair()` for Attr
+- `ds.Pair()` for Style
+
+**Added:**
+- `ds.Pair()` - Unified helper for all attribute bindings
+- `ds.P()` - Shorthand alias for Pair()
+
+### Why This Change?
+
+**Better API Consistency:**
+- **Before:** Mix of long names (`Int`, `String`) and cryptic short names (`C`, `A`, `S`)
+- **After:** Clear distinction between data transformation (`Int`, `String`) and expression binding (`Pair`)
+
+**Reduced Cognitive Load:**
+- Learn ONE helper name for ALL bindings instead of 4 different ones
+- `Pair` clearly communicates "key-value pairing"
+
+### Migration Steps
+
+**Automatic search & replace:**
+
+```bash
+# In your codebase, replace:
+ds.Pair(        → ds.Pair(
+ds.Pair(     → ds.Pair(
+ds.Pair(        → ds.Pair(
+ds.Pair(        → ds.Pair(
+```
+
+**Before (V2.0):**
+```go
+ds.Class(ds.Pair("hidden", "$isHidden"))
+ds.Computed(ds.Pair("total", "$price * $qty"))
+ds.Attr(ds.Pair("disabled", "$loading"))
+ds.Style(ds.Pair("color", "$textColor"))
+```
+
+**After (V2.1):**
+```go
+ds.Class(ds.Pair("hidden", "$isHidden"))
+ds.Computed(ds.Pair("total", "$price * $qty"))
+ds.Attr(ds.Pair("disabled", "$loading"))
+ds.Style(ds.Pair("color", "$textColor"))
+
+// Or use P() for brevity
+ds.Class(ds.P("btn-primary", "$isMain"))
+```
+
+**Migration Effort:** Very low - simple find/replace across codebase.
+
+---
+
+## V1 → V2.0: Type-Safe Variadic API
+
+### Why Migrate?
 
 V2 offers significant improvements:
 
@@ -12,7 +77,7 @@ V2 offers significant improvements:
 - **Eliminates odd-pair bugs** - no more "forgot a string" panics
 - **Better IDE support** - autocomplete for signal types
 
-## Breaking Changes
+## Breaking Changes (V1 → V2.0)
 
 All pair-based functions now use typed pairs instead of variadic strings or maps.
 
@@ -56,8 +121,8 @@ ds.Class("hidden", "$isHidden", "font-bold", "$isBold")
 **After (V2):**
 ```go
 ds.Class(
-    ds.C("hidden", "$isHidden"),
-    ds.C("font-bold", "$isBold"),
+    ds.Pair("hidden", "$isHidden"),
+    ds.Pair("font-bold", "$isBold"),
 )
 ```
 
@@ -71,8 +136,8 @@ ds.Computed("total", "$price * $qty", "tax", "$total * 0.1")
 **After (V2):**
 ```go
 ds.Computed(
-    ds.Comp("total", "$price * $qty"),
-    ds.Comp("tax", "$total * 0.1"),
+    ds.Pair("total", "$price * $qty"),
+    ds.Pair("tax", "$total * 0.1"),
 )
 ```
 
@@ -86,8 +151,8 @@ ds.Attr("title", "$tooltip", "disabled", "$loading")
 **After (V2):**
 ```go
 ds.Attr(
-    ds.A("title", "$tooltip"),
-    ds.A("disabled", "$loading"),
+    ds.Pair("title", "$tooltip"),
+    ds.Pair("disabled", "$loading"),
 )
 ```
 
@@ -101,8 +166,8 @@ ds.Style("display", "$hiding && 'none'", "color", "'red'")
 **After (V2):**
 ```go
 ds.Style(
-    ds.S("display", "$hiding && 'none'"),
-    ds.S("color", "'red'"),
+    ds.Pair("display", "$hiding && 'none'"),
+    ds.Pair("color", "'red'"),
 )
 ```
 
@@ -147,7 +212,7 @@ ds\.Class\("([^"]+)", "([^"]+)"
 
 **Replace with:**
 ```go
-ds.Class(ds.C("$1", "$2")
+ds.Class(ds.Pair("$1", "$2")
 ```
 
 ### Step 3: Update Computed Signals
@@ -161,7 +226,7 @@ ds\.Computed\("([^"]+)", "([^"]+)"
 
 **Replace with:**
 ```go
-ds.Computed(ds.Comp("$1", "$2")
+ds.Computed(ds.Pair("$1", "$2")
 ```
 
 ### Step 4: Update Attr Bindings
@@ -175,7 +240,7 @@ ds\.Attr\("([^"]+)", "([^"]+)"
 
 **Replace with:**
 ```go
-ds.Attr(ds.A("$1", "$2")
+ds.Attr(ds.Pair("$1", "$2")
 ```
 
 ### Step 5: Update Style Bindings
@@ -189,7 +254,7 @@ ds\.Style\("([^"]+)", "([^"]+)"
 
 **Replace with:**
 ```go
-ds.Style(ds.S("$1", "$2")
+ds.Style(ds.Pair("$1", "$2")
 ```
 
 ### Step 6: Update Complex Signals
@@ -260,17 +325,17 @@ templ Counter() {
     )... }>
         <button 
             { ds.OnClick("$count += $step")... }
-            { ds.Class(ds.C("active", "$count > 0"))... }
+            { ds.Class(ds.Pair("active", "$count > 0"))... }
         >
             Count: <span { ds.Text("$count")... }></span>
         </button>
         
-        <div { ds.Computed(ds.Comp("double", "$count * 2"))... }></div>
+        <div { ds.Computed(ds.Pair("double", "$count * 2"))... }></div>
         
         <input 
             type="number"
-            { ds.Attr(ds.A("value", "$step"))... }
-            { ds.Style(ds.S("color", "$count > 10 ? 'red' : 'black'"))... }
+            { ds.Attr(ds.Pair("value", "$step"))... }
+            { ds.Style(ds.Pair("color", "$count > 10 ? 'red' : 'black'"))... }
         />
     </div>
 }
@@ -312,14 +377,14 @@ Each pair must be wrapped in its helper:
 
 **Wrong:**
 ```go
-ds.Class(ds.C("hidden", "$isHidden", "bold", "$isBold"))  // Won't compile
+ds.Class(ds.Pair("hidden", "$isHidden", "bold", "$isBold"))  // Won't compile
 ```
 
 **Right:**
 ```go
 ds.Class(
-    ds.C("hidden", "$isHidden"),
-    ds.C("bold", "$isBold"),
+    ds.Pair("hidden", "$isHidden"),
+    ds.Pair("bold", "$isBold"),
 )
 ```
 
@@ -334,7 +399,7 @@ ds.Class("hidden")  // Panics at runtime: odd number of pairs
 
 **After:** Compile error
 ```go
-ds.Class(ds.C("hidden"))  // Won't compile: missing expression
+ds.Class(ds.Pair("hidden"))  // Won't compile: missing expression
 ```
 
 ### Better IDE Support

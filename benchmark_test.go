@@ -45,16 +45,16 @@ func BenchmarkSignals(b *testing.B) {
 func BenchmarkClass(b *testing.B) {
 	b.Run("single", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_ = ds.Class(ds.C("hidden", "$isHidden"))
+			_ = ds.Class(ds.Pair("hidden", "$isHidden"))
 		}
 	})
 
 	b.Run("multiple", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_ = ds.Class(
-				ds.C("hidden", "$isHidden"),
-				ds.C("font-bold", "$isBold"),
-				ds.C("text-red-500", "$hasError"),
+				ds.Pair("hidden", "$isHidden"),
+				ds.Pair("font-bold", "$isBold"),
+				ds.Pair("text-red-500", "$hasError"),
 			)
 		}
 	})
@@ -63,15 +63,15 @@ func BenchmarkClass(b *testing.B) {
 func BenchmarkComputed(b *testing.B) {
 	b.Run("single", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_ = ds.Computed(ds.Comp("total", "$price * $qty"))
+			_ = ds.Computed(ds.Pair("total", "$price * $qty"))
 		}
 	})
 
 	b.Run("multiple", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_ = ds.Computed(
-				ds.Comp("total", "$price * $qty"),
-				ds.Comp("tax", "$total * 0.1"),
+				ds.Pair("total", "$price * $qty"),
+				ds.Pair("tax", "$total * 0.1"),
 			)
 		}
 	})
@@ -80,15 +80,15 @@ func BenchmarkComputed(b *testing.B) {
 func BenchmarkAttr(b *testing.B) {
 	b.Run("single", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_ = ds.Attr(ds.A("title", "$tooltip"))
+			_ = ds.Attr(ds.Pair("title", "$tooltip"))
 		}
 	})
 
 	b.Run("multiple", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_ = ds.Attr(
-				ds.A("title", "$tooltip"),
-				ds.A("disabled", "$loading"),
+				ds.Pair("title", "$tooltip"),
+				ds.Pair("disabled", "$loading"),
 			)
 		}
 	})
@@ -97,15 +97,15 @@ func BenchmarkAttr(b *testing.B) {
 func BenchmarkStyle(b *testing.B) {
 	b.Run("single", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_ = ds.Style(ds.S("display", "$hiding && 'none'"))
+			_ = ds.Style(ds.Pair("display", "$hiding && 'none'"))
 		}
 	})
 
 	b.Run("multiple", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_ = ds.Style(
-				ds.S("display", "$hiding && 'none'"),
-				ds.S("color", "$textColor"),
+				ds.Pair("display", "$hiding && 'none'"),
+				ds.Pair("color", "$textColor"),
 			)
 		}
 	})
@@ -125,7 +125,7 @@ func BenchmarkMerge(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_ = ds.Merge(
 				ds.Signals(ds.Int("count", 0)),
-				ds.Class(ds.C("hidden", "$isHidden")),
+				ds.Class(ds.Pair("hidden", "$isHidden")),
 				ds.OnClick("toggle()"),
 				ds.Text("$message"),
 				ds.Show("$visible"),
