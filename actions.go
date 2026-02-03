@@ -132,16 +132,21 @@ func sseAction(verb, urlFormat string, args []any) string {
 // buildOpts builds a JavaScript options object from sseOption values.
 // Quoted values produce {key: 'val'}. Raw values produce {key: val}.
 func buildOpts(opts []sseOption) string {
-	var b strings.Builder
+	b := sharedBuilderPool.Get().(*strings.Builder)
+	defer func() {
+		b.Reset()
+		sharedBuilderPool.Put(b)
+	}()
+
 	b.WriteByte('{')
 	for i, o := range opts {
 		if i > 0 {
 			b.WriteString(", ")
 		}
 		if o.raw {
-			fmt.Fprintf(&b, "%s: %s", o.key, o.value)
+			fmt.Fprintf(b, "%s: %s", o.key, o.value)
 		} else {
-			fmt.Fprintf(&b, "%s: '%s'", o.key, o.value)
+			fmt.Fprintf(b, "%s: '%s'", o.key, o.value)
 		}
 	}
 	b.WriteByte('}')

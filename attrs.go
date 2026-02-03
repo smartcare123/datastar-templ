@@ -19,6 +19,9 @@ import (
 // ---------------------------------------------------------------------------
 
 // Signal represents a typed key-value pair for signals.
+//
+// Do not construct Signal directly; use the type-safe helper functions instead:
+// Int(), String(), Bool(), Float(), or JSON().
 type Signal struct {
 	key   string
 	value string
@@ -46,6 +49,15 @@ func Float(key string, value float64) Signal {
 
 // JSON creates a signal from any value using JSON marshaling.
 // Use this for complex types like arrays, objects, etc.
+//
+// Panics if the value cannot be marshaled to JSON. Common causes include:
+//   - Circular references (e.g., a struct that references itself)
+//   - Channels, functions, or other non-JSON types
+//   - Values that implement json.Marshaler but return an error
+//
+// Example:
+//
+//	ds.Signals(ds.JSON("user", map[string]any{"name": "Alice", "age": 30}))
 func JSON(key string, value any) Signal {
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -56,6 +68,8 @@ func JSON(key string, value any) Signal {
 
 // PairItem represents a key-value expression binding for attributes.
 // Used by Class, Computed, Attr, and Style functions.
+//
+// Do not construct PairItem directly; use Pair() or P() helper functions instead.
 type PairItem struct {
 	key  string
 	expr string
@@ -78,11 +92,13 @@ func P(key, expr string) PairItem {
 	return PairItem{key, expr}
 }
 
-// Pool for reusing strings.Builder instances
-var signalsBuilderPool = sync.Pool{
+// sharedBuilderPool is a sync.Pool for reusing strings.Builder instances across
+// all attribute-building functions. This reduces memory allocations and improves
+// performance by recycling builders instead of creating new ones for each operation.
+var sharedBuilderPool = sync.Pool{
 	New: func() interface{} {
 		b := new(strings.Builder)
-		b.Grow(128)
+		b.Grow(128) // Initial capacity for typical attribute values
 		return b
 	},
 }
@@ -93,10 +109,10 @@ var signalsBuilderPool = sync.Pool{
 //
 // See https://data-star.dev/reference/attributes#data-signals
 func Signals(signals ...Signal) templ.Attributes {
-	b := signalsBuilderPool.Get().(*strings.Builder)
+	b := sharedBuilderPool.Get().(*strings.Builder)
 	defer func() {
 		b.Reset()
-		signalsBuilderPool.Put(b)
+		sharedBuilderPool.Put(b)
 	}()
 
 	// Calculate exact capacity needed
@@ -151,15 +167,6 @@ func SignalKey(name, expr string, modifiers ...Modifier) templ.Attributes {
 // data-computed
 // ---------------------------------------------------------------------------
 
-// Pool for computed signal builder
-var computedBuilderPool = sync.Pool{
-	New: func() interface{} {
-		b := new(strings.Builder)
-		b.Grow(128)
-		return b
-	},
-}
-
 // Computed creates read-only computed signals using typed pairs.
 // Each pair is wrapped in an arrow function.
 //
@@ -167,10 +174,10 @@ var computedBuilderPool = sync.Pool{
 //
 // See https://data-star.dev/reference/attributes#data-computed
 func Computed(pairs ...PairItem) templ.Attributes {
-	b := computedBuilderPool.Get().(*strings.Builder)
+	b := sharedBuilderPool.Get().(*strings.Builder)
 	defer func() {
 		b.Reset()
-		computedBuilderPool.Put(b)
+		sharedBuilderPool.Put(b)
 	}()
 
 	// Calculate exact capacity
@@ -301,25 +308,16 @@ func Show(expr string) templ.Attributes {
 // data-class
 // ---------------------------------------------------------------------------
 
-// Pool for class builder
-var classBuilderPool = sync.Pool{
-	New: func() interface{} {
-		b := new(strings.Builder)
-		b.Grow(128)
-		return b
-	},
-}
-
 // Class adds/removes CSS classes using typed pairs.
 //
 //	{ ds.Class(ds.Pair("hidden", "$isHidden"), ds.Pair("font-bold", "$isBold"))... }
 //
 // See https://data-star.dev/reference/attributes#data-class
 func Class(pairs ...PairItem) templ.Attributes {
-	b := classBuilderPool.Get().(*strings.Builder)
+	b := sharedBuilderPool.Get().(*strings.Builder)
 	defer func() {
 		b.Reset()
-		classBuilderPool.Put(b)
+		sharedBuilderPool.Put(b)
 	}()
 
 	// Calculate exact capacity
@@ -363,25 +361,16 @@ func ClassKey(name, expr string, modifiers ...Modifier) templ.Attributes {
 // data-attr
 // ---------------------------------------------------------------------------
 
-// Pool for attr builder
-var attrBuilderPool = sync.Pool{
-	New: func() interface{} {
-		b := new(strings.Builder)
-		b.Grow(128)
-		return b
-	},
-}
-
 // Attr sets HTML attributes using typed pairs.
 //
 //	{ ds.Attr(ds.Pair("title", "$tooltip"), ds.Pair("disabled", "$loading"))... }
 //
 // See https://data-star.dev/reference/attributes#data-attr
 func Attr(pairs ...PairItem) templ.Attributes {
-	b := attrBuilderPool.Get().(*strings.Builder)
+	b := sharedBuilderPool.Get().(*strings.Builder)
 	defer func() {
 		b.Reset()
-		attrBuilderPool.Put(b)
+		sharedBuilderPool.Put(b)
 	}()
 
 	// Calculate exact capacity
@@ -426,25 +415,16 @@ func AttrKey(name, expr string, modifiers ...Modifier) templ.Attributes {
 // data-style
 // ---------------------------------------------------------------------------
 
-// Pool for style builder
-var styleBuilderPool = sync.Pool{
-	New: func() interface{} {
-		b := new(strings.Builder)
-		b.Grow(128)
-		return b
-	},
-}
-
 // Style sets inline CSS styles using typed pairs.
 //
 //	{ ds.Style(ds.Pair("display", "$hiding && 'none'"), ds.Pair("color", "$textColor"))... }
 //
 // See https://data-star.dev/reference/attributes#data-style
 func Style(pairs ...PairItem) templ.Attributes {
-	b := styleBuilderPool.Get().(*strings.Builder)
+	b := sharedBuilderPool.Get().(*strings.Builder)
 	defer func() {
 		b.Reset()
-		styleBuilderPool.Put(b)
+		sharedBuilderPool.Put(b)
 	}()
 
 	// Calculate exact capacity

@@ -42,7 +42,12 @@ type Filter struct {
 // ---------------------------------------------------------------------------
 
 // Duration returns a ".{N}ms" modifier tag, rounded to the nearest millisecond.
+//
 // Panics if the duration is negative.
+//
+// Example:
+//
+//	ds.OnClick("handler()", ds.ModDebounce, ds.Duration(300*time.Millisecond))
 func Duration(d time.Duration) Modifier {
 	if d < 0 {
 		panic(fmt.Sprintf("ds: duration must not be negative, got %v", d))
@@ -52,6 +57,12 @@ func Duration(d time.Duration) Modifier {
 
 // Ms returns a ".{n}ms" modifier tag. Shorthand for Duration when you have a
 // raw millisecond value.
+//
+// Panics if n is negative.
+//
+// Example:
+//
+//	ds.OnInput("search()", ds.ModDebounce, ds.Ms(300))
 func Ms(n int) Modifier {
 	if n < 0 {
 		panic(fmt.Sprintf("ds: milliseconds must not be negative, got %d", n))
@@ -60,6 +71,12 @@ func Ms(n int) Modifier {
 }
 
 // Seconds returns a ".{n}s" modifier tag.
+//
+// Panics if n is negative.
+//
+// Example:
+//
+//	ds.OnInterval("poll()", ds.Seconds(5))
 func Seconds(n int) Modifier {
 	if n < 0 {
 		panic(fmt.Sprintf("ds: seconds must not be negative, got %d", n))
@@ -69,7 +86,12 @@ func Seconds(n int) Modifier {
 
 // Threshold returns a visibility percentage modifier tag for the __threshold modifier.
 // The value must be between 0.0 (exclusive) and 1.0 (inclusive).
-// Panics if out of range.
+//
+// Panics if t is <= 0 or > 1.
+//
+// Example:
+//
+//	ds.OnIntersect("loadMore()", ds.ModThreshold, ds.Threshold(0.5))  // 50% visible
 func Threshold(t float64) Modifier {
 	if t <= 0 || t > 1 {
 		panic(fmt.Sprintf("ds: threshold must be between 0.0 (exclusive) and 1.0 (inclusive), got %v", t))
@@ -89,7 +111,13 @@ func mods(modifiers []Modifier) string {
 	if len(modifiers) == 0 {
 		return ""
 	}
-	var b strings.Builder
+
+	b := sharedBuilderPool.Get().(*strings.Builder)
+	defer func() {
+		b.Reset()
+		sharedBuilderPool.Put(b)
+	}()
+
 	for _, m := range modifiers {
 		b.WriteString(string(m))
 	}
