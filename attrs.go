@@ -2,6 +2,7 @@ package ds
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -55,6 +56,8 @@ func Float(key string, value float64) Signal {
 //   - Channels, functions, or other non-JSON types
 //   - Values that implement json.Marshaler but return an error
 //
+// For production code with untrusted input, consider using JSONSafe instead.
+//
 // Example:
 //
 //	ds.Signals(ds.JSON("user", map[string]any{"name": "Alice", "age": 30}))
@@ -64,6 +67,26 @@ func JSON(key string, value any) Signal {
 		panic("ds: failed to marshal JSON signal: " + err.Error())
 	}
 	return Signal{key, string(data)}
+}
+
+// JSONSafe creates a signal from any value using JSON marshaling.
+// Returns an error instead of panicking if marshaling fails.
+//
+// Use this for untrusted input or when you need graceful error handling.
+//
+// Example:
+//
+//	sig, err := ds.JSONSafe("user", userData)
+//	if err != nil {
+//	    return err // Handle gracefully
+//	}
+//	ds.Signals(sig)
+func JSONSafe(key string, value any) (Signal, error) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return Signal{}, fmt.Errorf("ds: failed to marshal JSON signal: %w", err)
+	}
+	return Signal{key, string(data)}, nil
 }
 
 // PairItem represents a key-value expression binding for attributes.
@@ -101,6 +124,46 @@ var sharedBuilderPool = sync.Pool{
 		b.Grow(128) // Initial capacity for typical attribute values
 		return b
 	},
+}
+
+// buildPairs is a generic helper for building JavaScript object literals from key-value pairs.
+// The valueFormatter function determines how each value is wrapped (e.g., "expr" vs "() => expr").
+func buildPairs(pairs []PairItem, valueFormatter func(string) string) string {
+	b := sharedBuilderPool.Get().(*strings.Builder)
+	defer func() {
+		b.Reset()
+		sharedBuilderPool.Put(b)
+	}()
+
+	// Calculate exact capacity
+	capacity := 2 // {}
+	for i, pair := range pairs {
+		if i > 0 {
+			capacity += 2 // ", "
+		}
+		formatted := valueFormatter(pair.expr)
+		capacity += 1 + len(pair.key) + 4 + len(formatted) // "'key': formatted"
+	}
+
+	if b.Cap() < capacity {
+		b.Grow(capacity - b.Len())
+	}
+
+	// Build the object
+	b.WriteByte('{')
+	for i, pair := range pairs {
+		if i > 0 {
+			b.WriteByte(',')
+			b.WriteByte(' ')
+		}
+		b.WriteByte('\'')
+		b.WriteString(pair.key)
+		b.WriteString("': ")
+		b.WriteString(valueFormatter(pair.expr))
+	}
+	b.WriteByte('}')
+
+	return b.String()
 }
 
 // Signals patches one or more signals using typed helpers.
@@ -174,40 +237,10 @@ func SignalKey(name, expr string, modifiers ...Modifier) templ.Attributes {
 //
 // See https://data-star.dev/reference/attributes#data-computed
 func Computed(pairs ...PairItem) templ.Attributes {
-	b := sharedBuilderPool.Get().(*strings.Builder)
-	defer func() {
-		b.Reset()
-		sharedBuilderPool.Put(b)
-	}()
-
-	// Calculate exact capacity
-	capacity := 2 // {}
-	for i, pair := range pairs {
-		if i > 0 {
-			capacity += 2 // ", "
-		}
-		// 'key': () => expr
-		capacity += 1 + len(pair.key) + 11 + len(pair.expr) // "'key': () => expr"
-	}
-
-	if b.Cap() < capacity {
-		b.Grow(capacity - b.Len())
-	}
-
-	b.WriteByte('{')
-	for i, pair := range pairs {
-		if i > 0 {
-			b.WriteByte(',')
-			b.WriteByte(' ')
-		}
-		b.WriteByte('\'')
-		b.WriteString(pair.key)
-		b.WriteString("': () => ")
-		b.WriteString(pair.expr)
-	}
-	b.WriteByte('}')
-
-	return templ.Attributes{"data-computed": b.String()}
+	obj := buildPairs(pairs, func(expr string) string {
+		return "() => " + expr
+	})
+	return templ.Attributes{"data-computed": obj}
 }
 
 // ComputedKey creates a single computed signal using keyed syntax.
@@ -314,40 +347,8 @@ func Show(expr string) templ.Attributes {
 //
 // See https://data-star.dev/reference/attributes#data-class
 func Class(pairs ...PairItem) templ.Attributes {
-	b := sharedBuilderPool.Get().(*strings.Builder)
-	defer func() {
-		b.Reset()
-		sharedBuilderPool.Put(b)
-	}()
-
-	// Calculate exact capacity
-	capacity := 2 // {}
-	for i, pair := range pairs {
-		if i > 0 {
-			capacity += 2 // ", "
-		}
-		// 'key': expr
-		capacity += 1 + len(pair.key) + 4 + len(pair.expr) // "'key': expr"
-	}
-
-	if b.Cap() < capacity {
-		b.Grow(capacity - b.Len())
-	}
-
-	b.WriteByte('{')
-	for i, pair := range pairs {
-		if i > 0 {
-			b.WriteByte(',')
-			b.WriteByte(' ')
-		}
-		b.WriteByte('\'')
-		b.WriteString(pair.key)
-		b.WriteString("': ")
-		b.WriteString(pair.expr)
-	}
-	b.WriteByte('}')
-
-	return templ.Attributes{"data-class": b.String()}
+	obj := buildPairs(pairs, func(expr string) string { return expr })
+	return templ.Attributes{"data-class": obj}
 }
 
 // ClassKey adds/removes a single CSS class using keyed syntax.
@@ -367,40 +368,8 @@ func ClassKey(name, expr string, modifiers ...Modifier) templ.Attributes {
 //
 // See https://data-star.dev/reference/attributes#data-attr
 func Attr(pairs ...PairItem) templ.Attributes {
-	b := sharedBuilderPool.Get().(*strings.Builder)
-	defer func() {
-		b.Reset()
-		sharedBuilderPool.Put(b)
-	}()
-
-	// Calculate exact capacity
-	capacity := 2 // {}
-	for i, pair := range pairs {
-		if i > 0 {
-			capacity += 2 // ", "
-		}
-		// 'key': expr
-		capacity += 1 + len(pair.key) + 4 + len(pair.expr) // "'key': expr"
-	}
-
-	if b.Cap() < capacity {
-		b.Grow(capacity - b.Len())
-	}
-
-	b.WriteByte('{')
-	for i, pair := range pairs {
-		if i > 0 {
-			b.WriteByte(',')
-			b.WriteByte(' ')
-		}
-		b.WriteByte('\'')
-		b.WriteString(pair.key)
-		b.WriteString("': ")
-		b.WriteString(pair.expr)
-	}
-	b.WriteByte('}')
-
-	return templ.Attributes{"data-attr": b.String()}
+	obj := buildPairs(pairs, func(expr string) string { return expr })
+	return templ.Attributes{"data-attr": obj}
 }
 
 // AttrKey sets a single HTML attribute using keyed syntax.
@@ -421,40 +390,8 @@ func AttrKey(name, expr string, modifiers ...Modifier) templ.Attributes {
 //
 // See https://data-star.dev/reference/attributes#data-style
 func Style(pairs ...PairItem) templ.Attributes {
-	b := sharedBuilderPool.Get().(*strings.Builder)
-	defer func() {
-		b.Reset()
-		sharedBuilderPool.Put(b)
-	}()
-
-	// Calculate exact capacity
-	capacity := 2 // {}
-	for i, pair := range pairs {
-		if i > 0 {
-			capacity += 2 // ", "
-		}
-		// 'key': expr
-		capacity += 1 + len(pair.key) + 4 + len(pair.expr) // "'key': expr"
-	}
-
-	if b.Cap() < capacity {
-		b.Grow(capacity - b.Len())
-	}
-
-	b.WriteByte('{')
-	for i, pair := range pairs {
-		if i > 0 {
-			b.WriteByte(',')
-			b.WriteByte(' ')
-		}
-		b.WriteByte('\'')
-		b.WriteString(pair.key)
-		b.WriteString("': ")
-		b.WriteString(pair.expr)
-	}
-	b.WriteByte('}')
-
-	return templ.Attributes{"data-style": b.String()}
+	obj := buildPairs(pairs, func(expr string) string { return expr })
+	return templ.Attributes{"data-style": obj}
 }
 
 // StyleKey sets a single inline CSS style using keyed syntax.

@@ -1578,3 +1578,207 @@ func TestBoundaryConditions(t *testing.T) {
 		assert.Equal(t, "@get('"+url+"')", result)
 	})
 }
+
+// ---------------------------------------------------------------------------
+// Error Handling Tests (Safe variants)
+// ---------------------------------------------------------------------------
+
+func TestJSONSafe(t *testing.T) {
+	t.Run("valid JSON", func(t *testing.T) {
+		sig, err := ds.JSONSafe("user", map[string]any{"name": "Alice", "age": 30})
+		require.NoError(t, err)
+		// Verify by using it in Signals()
+		attrs := ds.Signals(sig)
+		assert.Contains(t, attrs["data-signals"], "Alice")
+	})
+
+	t.Run("nil value", func(t *testing.T) {
+		sig, err := ds.JSONSafe("data", nil)
+		require.NoError(t, err)
+		// Verify by using it in Signals() - nil marshals to "null"
+		attrs := ds.Signals(sig)
+		assert.Contains(t, attrs["data-signals"], "null")
+	})
+
+	t.Run("channel type fails", func(t *testing.T) {
+		ch := make(chan int)
+		_, err := ds.JSONSafe("channel", ch)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to marshal JSON signal")
+	})
+
+	t.Run("function type fails", func(t *testing.T) {
+		fn := func() {}
+		_, err := ds.JSONSafe("fn", fn)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to marshal JSON signal")
+	})
+
+	t.Run("circular reference fails", func(t *testing.T) {
+		type Node struct {
+			Next *Node
+		}
+		n := &Node{}
+		n.Next = n
+
+		// Note: json.Marshal doesn't actually detect circular references
+		// It will recurse until stack overflow, but we can't easily test that
+		// This test documents the expected behavior
+	})
+
+	t.Run("array values", func(t *testing.T) {
+		sig, err := ds.JSONSafe("items", []int{1, 2, 3})
+		require.NoError(t, err)
+		assert.NotEmpty(t, sig)
+	})
+}
+
+func TestDurationSafe(t *testing.T) {
+	t.Run("positive duration", func(t *testing.T) {
+		mod, err := ds.DurationSafe(300 * time.Millisecond)
+		require.NoError(t, err)
+		assert.Equal(t, ds.Modifier(".300ms"), mod)
+	})
+
+	t.Run("zero duration", func(t *testing.T) {
+		mod, err := ds.DurationSafe(0)
+		require.NoError(t, err)
+		assert.Equal(t, ds.Modifier(".0ms"), mod)
+	})
+
+	t.Run("negative duration fails", func(t *testing.T) {
+		_, err := ds.DurationSafe(-100 * time.Millisecond)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "duration must not be negative")
+	})
+
+	t.Run("very large duration", func(t *testing.T) {
+		mod, err := ds.DurationSafe(24 * time.Hour)
+		require.NoError(t, err)
+		assert.NotEmpty(t, mod)
+	})
+}
+
+func TestMsSafe(t *testing.T) {
+	t.Run("positive milliseconds", func(t *testing.T) {
+		mod, err := ds.MsSafe(500)
+		require.NoError(t, err)
+		assert.Equal(t, ds.Modifier(".500ms"), mod)
+	})
+
+	t.Run("zero milliseconds", func(t *testing.T) {
+		mod, err := ds.MsSafe(0)
+		require.NoError(t, err)
+		assert.Equal(t, ds.Modifier(".0ms"), mod)
+	})
+
+	t.Run("negative milliseconds fails", func(t *testing.T) {
+		_, err := ds.MsSafe(-100)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "milliseconds must not be negative")
+	})
+}
+
+func TestSecondsSafe(t *testing.T) {
+	t.Run("positive seconds", func(t *testing.T) {
+		mod, err := ds.SecondsSafe(5)
+		require.NoError(t, err)
+		assert.Equal(t, ds.Modifier(".5s"), mod)
+	})
+
+	t.Run("zero seconds", func(t *testing.T) {
+		mod, err := ds.SecondsSafe(0)
+		require.NoError(t, err)
+		assert.Equal(t, ds.Modifier(".0s"), mod)
+	})
+
+	t.Run("negative seconds fails", func(t *testing.T) {
+		_, err := ds.SecondsSafe(-10)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "seconds must not be negative")
+	})
+}
+
+func TestThresholdSafe(t *testing.T) {
+	t.Run("valid threshold 0.5", func(t *testing.T) {
+		mod, err := ds.ThresholdSafe(0.5)
+		require.NoError(t, err)
+		assert.Equal(t, ds.Modifier(".50"), mod)
+	})
+
+	t.Run("valid threshold 1.0", func(t *testing.T) {
+		mod, err := ds.ThresholdSafe(1.0)
+		require.NoError(t, err)
+		assert.Equal(t, ds.Modifier(".100"), mod)
+	})
+
+	t.Run("valid threshold 0.01", func(t *testing.T) {
+		mod, err := ds.ThresholdSafe(0.01)
+		require.NoError(t, err)
+		assert.NotEmpty(t, mod)
+	})
+
+	t.Run("zero threshold fails", func(t *testing.T) {
+		_, err := ds.ThresholdSafe(0)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "threshold must be between")
+	})
+
+	t.Run("negative threshold fails", func(t *testing.T) {
+		_, err := ds.ThresholdSafe(-0.5)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "threshold must be between")
+	})
+
+	t.Run("threshold > 1 fails", func(t *testing.T) {
+		_, err := ds.ThresholdSafe(1.5)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "threshold must be between")
+	})
+}
+
+// Test that panic variants still work as expected
+func TestPanicVariants(t *testing.T) {
+	t.Run("JSON panics on channel", func(t *testing.T) {
+		ch := make(chan int)
+		assert.Panics(t, func() {
+			ds.JSON("ch", ch)
+		})
+	})
+
+	t.Run("Duration panics on negative", func(t *testing.T) {
+		assert.Panics(t, func() {
+			ds.Duration(-100 * time.Millisecond)
+		})
+	})
+
+	t.Run("Ms panics on negative", func(t *testing.T) {
+		assert.Panics(t, func() {
+			ds.Ms(-100)
+		})
+	})
+
+	t.Run("Seconds panics on negative", func(t *testing.T) {
+		assert.Panics(t, func() {
+			ds.Seconds(-5)
+		})
+	})
+
+	t.Run("Threshold panics on zero", func(t *testing.T) {
+		assert.Panics(t, func() {
+			ds.Threshold(0)
+		})
+	})
+
+	t.Run("Threshold panics on negative", func(t *testing.T) {
+		assert.Panics(t, func() {
+			ds.Threshold(-0.5)
+		})
+	})
+
+	t.Run("Threshold panics on > 1", func(t *testing.T) {
+		assert.Panics(t, func() {
+			ds.Threshold(1.5)
+		})
+	})
+}

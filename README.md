@@ -40,6 +40,25 @@ go get github.com/yacobolo/datastar-templ
 
 Tested with **Datastar 1.0.0-RC.7**. [Get started with Datastar](https://data-star.dev/guide/getting-started).
 
+## Development
+
+This project uses [Task](https://taskfile.dev) for development commands:
+
+```bash
+# Install Task (if not already installed)
+brew install go-task/tap/go-task  # macOS
+# or: go install github.com/go-task/task/v3/cmd/task@latest
+
+# Common commands
+task test              # Run all tests
+task test:coverage     # Show test coverage
+task bench             # Run performance benchmarks
+task check             # Format, vet, and test
+task --list            # See all available commands
+```
+
+See `Taskfile.yml` for the complete list of available tasks.
+
 ## Usage
 
 Import the package (commonly aliased as `ds`):

@@ -1,0 +1,235 @@
+version: '3'
+
+# datastar-templ Taskfile
+# Install Task: https://taskfile.dev/installation/
+# Usage: task <command>
+
+vars:
+  PKG: github.com/Yacobolo/datastar-templ
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  # Testing
+  test:
+    desc: Run all tests
+    cmds:
+      - go test ./... -v
+
+  test:fast:
+    desc: Run tests without verbose output
+    cmds:
+      - go test ./...
+
+  test:coverage:
+    desc: Run tests with coverage report
+    cmds:
+      - go test ./... -coverprofile=coverage.out -covermode=atomic
+      - go tool cover -func=coverage.out
+      - go tool cover -func=coverage.out | tail -1
+
+  test:coverage:html:
+    desc: Open HTML coverage report in browser
+    cmds:
+      - go test ./... -coverprofile=coverage.out -covermode=atomic
+      - go tool cover -html=coverage.out -o coverage.html
+      - cmd: open coverage.html
+        platforms: [darwin]
+      - cmd: xdg-open coverage.html
+        platforms: [linux]
+      - cmd: start coverage.html
+        platforms: [windows]
+
+  test:watch:
+    desc: Watch and re-run tests on file changes
+    deps: [install:tools]
+    cmds:
+      - reflex -r '\.go$' -s -- sh -c 'clear && go test ./... -v'
+
+  # Benchmarking
+  bench:
+    desc: Run benchmarks
+    cmds:
+      - go test ./... -bench=. -benchmem
+
+  bench:compare:
+    desc: Compare benchmark results (run twice, compare with benchstat)
+    deps: [install:tools]
+    cmds:
+      - go test ./... -bench=. -benchmem -count=5 > bench-old.txt
+      - echo "Make your changes, then run 'task bench:compare:after'"
+
+  bench:compare:after:
+    desc: Run benchmarks after changes and compare
+    deps: [install:tools]
+    cmds:
+      - go test ./... -bench=. -benchmem -count=5 > bench-new.txt
+      - benchstat bench-old.txt bench-new.txt
+
+  # Code Quality
+  lint:
+    desc: Run linters (golangci-lint)
+    deps: [install:tools]
+    cmds:
+      - golangci-lint run
+
+  fmt:
+    desc: Format code with gofmt
+    cmds:
+      - gofmt -s -w .
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  check:
+    desc: Run all checks (fmt, vet, test)
+    cmds:
+      - task: fmt
+      - task: vet
+      - task: test
+
+  # Templ Generation
+  templ:generate:
+    desc: Generate templ files
+    cmds:
+      - templ generate
+
+  templ:watch:
+    desc: Watch and regenerate templ files on changes
+    cmds:
+      - templ generate --watch
+
+  # Build & Install
+  build:
+    desc: Build the package
+    cmds:
+      - go build ./...
+
+  install:
+    desc: Install the package
+    cmds:
+      - go install
+
+  # Dependency Management
+  deps:
+    desc: Download dependencies
+    cmds:
+      - go mod download
+
+  deps:tidy:
+    desc: Tidy and verify dependencies
+    cmds:
+      - go mod tidy
+      - go mod verify
+
+  deps:update:
+    desc: Update all dependencies
+    cmds:
+      - go get -u ./...
+      - go mod tidy
+
+  # Tools Installation
+  install:tools:
+    desc: Install development tools
+    cmds:
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - go install golang.org/x/perf/cmd/benchstat@latest
+      - go install github.com/cespare/reflex@latest
+      - go install github.com/a-h/templ/cmd/templ@latest
+    status:
+      - which golangci-lint
+      - which benchstat
+      - which reflex
+      - which templ
+
+  # Documentation
+  docs:serve:
+    desc: Serve godoc locally
+    cmds:
+      - echo "Opening http://localhost:6060/pkg/{{.PKG}}/"
+      - godoc -http=:6060
+
+  # Git helpers
+  git:status:
+    desc: Show git status
+    cmds:
+      - git status
+
+  git:diff:
+    desc: Show git diff
+    cmds:
+      - git diff
+
+  # Release helpers
+  release:check:
+    desc: Check if ready for release
+    cmds:
+      - task: check
+      - task: test:coverage
+      - git status --porcelain
+
+  release:tag:
+    desc: Tag a new release (requires VERSION variable)
+    cmds:
+      - test -n "{{.VERSION}}" || (echo "ERROR - VERSION required. Usage - task release:tag VERSION=v1.3.0" && exit 1)
+      - git tag -a {{.VERSION}} -m "Release {{.VERSION}}"
+      - echo "Tagged {{.VERSION}}. Push with - git push origin {{.VERSION}}"
+
+  release:push:
+    desc: Push release tag (requires VERSION variable)
+    cmds:
+      - test -n "{{.VERSION}}" || (echo "ERROR - VERSION required. Usage - task release:push VERSION=v1.3.0" && exit 1)
+      - git push origin {{.VERSION}}
+      - echo "Pushed {{.VERSION}}. Go module proxy will index it shortly."
+
+  # Cleanup
+  clean:
+    desc: Clean build artifacts and temporary files
+    cmds:
+      - rm -f coverage.out coverage.html
+      - rm -f bench-old.txt bench-new.txt
+      - rm -rf dist/
+      - go clean -cache -testcache
+
+  clean:all:
+    desc: Deep clean (includes mod cache)
+    cmds:
+      - task: clean
+      - go clean -modcache
+
+  # CI/CD helpers
+  ci:
+    desc: Run CI checks (what CI would run)
+    cmds:
+      - task: fmt
+      - task: vet
+      - task: test
+      - task: test:coverage
+      - task: build
+
+  # Development
+  dev:
+    desc: Start development mode (watch tests)
+    cmds:
+      - task: test:watch
+
+  # Example workflows
+  pre-commit:
+    desc: Run before committing
+    cmds:
+      - task: fmt
+      - task: vet
+      - task: test:fast
+
+  pre-push:
+    desc: Run before pushing
+    cmds:
+      - task: check
+      - task: lint
+      - task: test:coverage

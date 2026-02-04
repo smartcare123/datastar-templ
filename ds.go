@@ -43,7 +43,7 @@ type Filter struct {
 
 // Duration returns a ".{N}ms" modifier tag, rounded to the nearest millisecond.
 //
-// Panics if the duration is negative.
+// Panics if the duration is negative. For production code, consider DurationSafe.
 //
 // Example:
 //
@@ -55,10 +55,18 @@ func Duration(d time.Duration) Modifier {
 	return Modifier(fmt.Sprintf(".%dms", d.Round(time.Millisecond).Milliseconds()))
 }
 
+// DurationSafe is like Duration but returns an error instead of panicking.
+func DurationSafe(d time.Duration) (Modifier, error) {
+	if d < 0 {
+		return "", fmt.Errorf("ds: duration must not be negative, got %v", d)
+	}
+	return Modifier(fmt.Sprintf(".%dms", d.Round(time.Millisecond).Milliseconds())), nil
+}
+
 // Ms returns a ".{n}ms" modifier tag. Shorthand for Duration when you have a
 // raw millisecond value.
 //
-// Panics if n is negative.
+// Panics if n is negative. For production code, consider MsSafe.
 //
 // Example:
 //
@@ -70,9 +78,17 @@ func Ms(n int) Modifier {
 	return Modifier(fmt.Sprintf(".%dms", n))
 }
 
+// MsSafe is like Ms but returns an error instead of panicking.
+func MsSafe(n int) (Modifier, error) {
+	if n < 0 {
+		return "", fmt.Errorf("ds: milliseconds must not be negative, got %d", n)
+	}
+	return Modifier(fmt.Sprintf(".%dms", n)), nil
+}
+
 // Seconds returns a ".{n}s" modifier tag.
 //
-// Panics if n is negative.
+// Panics if n is negative. For production code, consider SecondsSafe.
 //
 // Example:
 //
@@ -84,10 +100,18 @@ func Seconds(n int) Modifier {
 	return Modifier(fmt.Sprintf(".%ds", n))
 }
 
+// SecondsSafe is like Seconds but returns an error instead of panicking.
+func SecondsSafe(n int) (Modifier, error) {
+	if n < 0 {
+		return "", fmt.Errorf("ds: seconds must not be negative, got %d", n)
+	}
+	return Modifier(fmt.Sprintf(".%ds", n)), nil
+}
+
 // Threshold returns a visibility percentage modifier tag for the __threshold modifier.
 // The value must be between 0.0 (exclusive) and 1.0 (inclusive).
 //
-// Panics if t is <= 0 or > 1.
+// Panics if t is <= 0 or > 1. For production code, consider ThresholdSafe.
 //
 // Example:
 //
@@ -100,6 +124,17 @@ func Threshold(t float64) Modifier {
 		return Modifier(".100")
 	}
 	return Modifier(strings.TrimPrefix(fmt.Sprintf("%.2f", t), "0"))
+}
+
+// ThresholdSafe is like Threshold but returns an error instead of panicking.
+func ThresholdSafe(t float64) (Modifier, error) {
+	if t <= 0 || t > 1 {
+		return "", fmt.Errorf("ds: threshold must be between 0.0 (exclusive) and 1.0 (inclusive), got %v", t)
+	}
+	if t == 1 {
+		return Modifier(".100"), nil
+	}
+	return Modifier(strings.TrimPrefix(fmt.Sprintf("%.2f", t), "0")), nil
 }
 
 // ---------------------------------------------------------------------------
